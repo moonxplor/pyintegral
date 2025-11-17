@@ -3,20 +3,21 @@ from PIL import Image
 import pytesseract
 import sympy as sp
 import re
-
 pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 
 def clean_math_expression(text):
-    text = text.replace("^", "**")     # power operator
-    text = text.replace("−", "-")      # fix unicode minus
-    text = text.replace("—", "-")      # long dash
-    text = text.replace(" ", "")       # remove spaces
-    text = text.replace("dx", "")      # remove dx
-    text = text.replace("∫", "")       # remove integral sign
-    text = text.replace("\n", "")      # remove newline
-
-    # Remove question numbering like "1.", "2)", etc.
+    text = text.replace("−", "-")
+    text = text.replace("—", "-")
+    text = text.replace("^", "**")
+    text = text.replace(" ", "")
+    text = text.replace("\n", "")
+    text = text.replace("∫", "")
+    text = text.replace("dx", "")
     text = re.sub(r"^\d+[\.\)]", "", text)
+
+    text = re.sub(r"[^0-9xX\+\-\*\/\^\(\)]", "", text)
+    text = text.replace("xX", "x")
+    text = text.replace("xx", "x")
 
     return text
 
@@ -24,7 +25,6 @@ def safe_parse(expr):
     try:
         return sp.sympify(expr)
     except:
-        # Keep only allowed math characters
         expr = re.sub(r"[^0-9a-zA-Z\+\-\*\/\^\(\)\.]","", expr)
         return sp.sympify(expr)
 
@@ -39,7 +39,6 @@ if uploaded_file:
 
     # OCR
     raw_text = pytesseract.image_to_string(image, config='--psm 6')
-
     st.write("🔹 Raw OCR Output:")
     st.code(raw_text)
 

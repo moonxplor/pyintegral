@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Photo Calculus Solver</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>📷 Photo Calculus Solver</h1>
+      <p class="subtitle">Upload a photo of an integral (e.g. ∫ (8/x - 5/x² + 6/x³) dx)</p>
+    </header>
+
+    <section class="upload-card">
+      <label class="file-label">
+        <input id="imageInput" type="file" accept="image/*" />
+        <span>Select or take a photo</span>
+      </label>
+
+      <div id="previewWrap" class="preview hidden">
+        <img id="preview" alt="Preview" />
+      </div>
+
+      <div class="controls">
+        <button id="solveBtn" class="btn" disabled>Solve</button>
+        <button id="clearBtn" class="btn ghost">Clear</button>
+      </div>
+
+      <div id="loader" class="loader hidden">Solving…</div>
+    </section>
+
+    <section id="results" class="results hidden">
+      <h2>Results</h2>
+
+      <div class="result-box">
+        <h3>Raw OCR Output</h3>
+        <pre id="rawText" class="mono"></pre>
+      </div>
+
+      <div class="result-box">
+        <h3>Cleaned Expression</h3>
+        <pre id="cleanedText" class="mono"></pre>
+      </div>
+
+      <div class="result-box">
+        <h3>Solution</h3>
+        <pre id="solution" class="mono"></pre>
+      </div>
+
+      <div id="error" class="error hidden"></div>
+    </section>
+
+    <footer class="footer">
+      <small>Works best with clear, well-lit images. For mobile: use "Take photo" in file picker.</small>
+    </footer>
+  </main>
+
+  <script>
+  // JS: handle UI and submit image to backend /solve
+  const imageInput = document.getElementById('imageInput');
+  const preview = document.getElementById('preview');
+  const previewWrap = document.getElementById('previewWrap');
+  const solveBtn = document.getElementById('solveBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const loader = document.getElementById('loader');
+  const results = document.getElementById('results');
+  const rawText = document.getElementById('rawText');
+  const cleanedText = document.getElementById('cleanedText');
+  const solution = document.getElementById('solution');
+  const errorBox = document.getElementById('error');
+
+  let selectedFile = null;
+
+  imageInput.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    selectedFile = f;
+    const url = URL.createObjectURL(f);
+    preview.src = url;
+    previewWrap.classList.remove('hidden');
+    solveBtn.disabled = false;
+    results.classList.add('hidden');
+    errorBox.classList.add('hidden');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    imageInput.value = '';
+    preview.src = '';
+    previewWrap.classList.add('hidden');
+    solveBtn.disabled = true;
+    results.classList.add('hidden');
+    errorBox.classList.add('hidden');
+    selectedFile = null;
+  });
+
+  solveBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    loader.classList.remove('hidden');
+    solveBtn.disabled = true;
+    errorBox.classList.add('hidden');
+    rawText.textContent = cleanedText.textContent = solution.textContent = '';
+
+    const form = new FormData();
+    form.append('image', selectedFile);
+
+    try {
+      const res = await fetch('/solve', { method: 'POST', body: form });
+      const data = await res.json();
+
+      loader.classList.add('hidden');
+      solveBtn.disabled = false;
+
+      if (!res.ok) {
+        errorBox.textContent = data.error || 'Server error';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      rawText.textContent = data.raw || '';
+      cleanedText.textContent = data.cleaned || '';
+      solution.textContent = data.result || '';
+      results.classList.remove('hidden')
